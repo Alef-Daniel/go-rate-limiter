@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	httpInternal "github.com/Alef-Daniel/go-rate-limiter/internal/adapters/http"
@@ -11,7 +12,12 @@ import (
 )
 
 func main() {
-	clientRedis := cache.NewRedis("redis:6379")
+
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	clientRedis := cache.NewRedis(redisAddr)
 	if clientRedis == nil {
 		log.Fatal("redis client is nil")
 	}
