@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
+	"strings"
 
 	"github.com/Alef-Daniel/go-rate-limiter/internal/ratelimiter"
 )
@@ -10,7 +12,7 @@ func RateLimitMiddleware(limiter ratelimiter.Limiter) func(http.Handler) http.Ha
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			req := ratelimiter.Request{
-				IP:    r.RemoteAddr,
+				IP:    clientIP(r),
 				Token: r.Header.Get("API_KEY"),
 			}
 			allowed, err := limiter.Allow(r.Context(), req)
@@ -29,4 +31,13 @@ func RateLimitMiddleware(limiter ratelimiter.Limiter) func(http.Handler) http.Ha
 
 		})
 	}
+}
+
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+
+	return strings.TrimSpace(r.RemoteAddr)
 }
