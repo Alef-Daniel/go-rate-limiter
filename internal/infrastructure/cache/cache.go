@@ -34,3 +34,24 @@ func (r *Redis) Expire(
 ) error {
 	return r.client.Expire(ctx, key, expiration).Err()
 }
+
+func (r *Redis) Exists(
+	ctx context.Context,
+	key string,
+) (bool, error) {
+	count, err := r.client.Exists(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func (r *Redis) Set(
+	ctx context.Context,
+	key string,
+	value string,
+	expiration time.Duration,
+) error {
+	return r.client.Set(ctx, key, value, expiration).Err()
+}
