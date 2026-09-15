@@ -11,9 +11,9 @@ type Redis struct {
 	client *redis.Client
 }
 
-func NewRedis() *Redis {
+func NewRedis(addr string) *Redis {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     addr,
 		Password: "",
 		DB:       0,
 	})
