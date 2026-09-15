@@ -2,7 +2,10 @@ module github.com/Alef-Daniel/go-rate-limiter
 
 go 1.25.4
 
-require github.com/redis/go-redis/v9 v9.22.0
+require (
+	github.com/go-chi/chi/v5 v5.3.2
+	github.com/redis/go-redis/v9 v9.22.0
+)
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
