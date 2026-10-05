@@ -114,3 +114,124 @@ func TestRedisLimiter_AllowsUntilIPLimit(t *testing.T) {
 		t.Fatal("request exceeding the limit should be blocked")
 	}
 }
+
+func TestRedisLimiter_TokenTakesPrecedenceOverBlockedIP(t *testing.T) {
+	cacheMock := mocks.NewCache(t)
+
+	// IP is already blocked
+	cacheMock.
+		On(
+			"Exists",
+			mock.Anything,
+			"rate_limit_192.168.0.1_blocked",
+		).
+		Return(true, nil).
+		Once()
+
+	// Token is not blocked
+	cacheMock.
+		On(
+			"Exists",
+			mock.Anything,
+			"rate_limit_abc123_blocked",
+		).
+		Return(false, nil).
+		Times(3)
+
+	cacheMock.
+		On(
+			"Increment",
+			mock.Anything,
+			"rate_limit_abc123",
+		).
+		Return(int64(1), nil).
+		Once()
+
+	cacheMock.
+		On(
+			"Expire",
+			mock.Anything,
+			"rate_limit_abc123",
+			time.Second,
+		).
+		Return(nil).
+		Once()
+
+	cacheMock.
+		On(
+			"Increment",
+			mock.Anything,
+			"rate_limit_abc123",
+		).
+		Return(int64(2), nil).
+		Once()
+
+	cacheMock.
+		On(
+			"Increment",
+			mock.Anything,
+			"rate_limit_abc123",
+		).
+		Return(int64(3), nil).
+		Once()
+
+	cacheMock.
+		On(
+			"Set",
+			mock.Anything,
+			"rate_limit_abc123_blocked",
+			"1",
+			time.Minute,
+		).
+		Return(nil).
+		Once()
+
+	limiter, err := ratelimiter.NewRedisLimiter(
+		cacheMock,
+		time.Second,
+		time.Minute,
+		1,
+		2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ipOnly := ratelimiter.Request{
+		IP: "192.168.0.1",
+	}
+
+	allowed, err := limiter.Allow(context.Background(), ipOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if allowed {
+		t.Fatal("request without token should be blocked when IP is blocked")
+	}
+
+	withToken := ratelimiter.Request{
+		IP:    "192.168.0.1",
+		Token: "abc123",
+	}
+
+	for i := 0; i < 2; i++ {
+		allowed, err := limiter.Allow(context.Background(), withToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !allowed {
+			t.Fatalf("request %d with token should be allowed even with IP blocked", i+1)
+		}
+	}
+
+	allowed, err = limiter.Allow(context.Background(), withToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if allowed {
+		t.Fatal("request exceeding the token limit should be blocked")
+	}
+}
